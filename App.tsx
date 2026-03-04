@@ -22,16 +22,14 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Dashboard);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
 
-  // Authentication Handlers
   const handleLogin = (role: UserRole) => {
-    setCurrentUser({ id: 'user_1', name: 'Demo User', role });
     setCurrentPage(Page.Dashboard);
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
   };
-  
+
   // Navigation Handler: Closes sidebar on mobile after navigating
   const navigate = useCallback((page: Page) => {
     setCurrentPage(page);
@@ -64,28 +62,28 @@ function App() {
   }
 
   return (
-      <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
-        <Sidebar 
-          navigate={navigate} 
-          currentPage={currentPage} 
-          userRole={currentUser.role} 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      <Sidebar
+        navigate={navigate}
+        currentPage={currentPage}
+        userRole={currentUser.role}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+
+      <div className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:pl-64' : 'pl-0'}`}>
+        <Navbar
+          userRole={currentUser.role}
+          onLogout={handleLogout}
+          navigate={navigate}
+          onToggleSidebar={toggleSidebar}
+          isSidebarOpen={isSidebarOpen}
         />
-        
-        <div className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:pl-64' : 'pl-0'}`}>
-          <Navbar 
-            userRole={currentUser.role} 
-            onLogout={handleLogout} 
-            navigate={navigate} 
-            onToggleSidebar={toggleSidebar}
-            isSidebarOpen={isSidebarOpen}
-          />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 relative">
-            {renderPage()}
-          </main>
-        </div>
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8 relative">
+          {renderPage()}
+        </main>
       </div>
+    </div>
   );
 }
 

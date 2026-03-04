@@ -3,6 +3,7 @@ import { useData } from '../../context/DataContext';
 import { UserRole, StaffRole, AttendanceStatus, StudentStatus, DailyLog, IncidentReport, RoomStatus } from '../../types';
 import PerformanceChart from '../charts/PerformanceChart';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { AttendanceModal, GradesModal } from '../TeacherActionsModals';
 
 // --- Shared Components ---
 const Card: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className = "" }) => (
@@ -15,7 +16,7 @@ const Card: React.FC<{ title: string; children: React.ReactNode; className?: str
 // --- Admin Dashboard ---
 export const AdminDashboard: React.FC = () => {
     const { students, staff, classes, enrollments } = useData();
-    
+
     const revenueData = useMemo(() => {
         const totalTuition = students.reduce((acc, s) => acc + s.tuition.total, 0);
         const paidTuition = students.reduce((acc, s) => acc + s.tuition.paid, 0);
@@ -72,9 +73,17 @@ export const AdminDashboard: React.FC = () => {
 };
 
 // --- Teacher Dashboard ---
+console.log('Teacher Dashboard Initializing...')
 export const TeacherDashboard: React.FC = () => {
-    const { currentUser, classes, enrollments, students, addAttendance } = useData();
+    const { currentUser, classes, enrollments, students } = useData();
     const myClasses = classes.filter(c => c.teacherId === currentUser?.id);
+
+    const [actionState, setActionState] = useState<{ type: 'attendance' | 'grades', classId: string } | null>(null);
+
+    const getStudentsForClass = (classId: string) => {
+        const classEnrolls = enrollments.filter(e => e.classId === classId);
+        return classEnrolls.map(e => students.find(s => s.id === e.studentId)).filter(Boolean) as any[];
+    };
 
     return (
         <div className="space-y-6">
@@ -84,12 +93,39 @@ export const TeacherDashboard: React.FC = () => {
                     const classEnrollments = enrollments.filter(e => e.classId === c.id);
                     return (
                         <Card key={c.id} title={c.name} className="hover:border-primary-300 transition-colors cursor-pointer">
-                            <div className="space-y-2">
-                                <p className="text-sm text-slate-500">{c.schedule}</p>
-                                <p className="text-sm font-bold text-slate-700">{classEnrollments.length} Students Enrolled</p>
-                                <div className="pt-4 flex space-x-2">
-                                    <button className="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm font-bold">Attendance</button>
-                                    <button className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-bold">Grades</button>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-sm text-slate-500 mb-1">{c.schedule}</p>
+                                    <p className="text-sm font-bold text-slate-700">{classEnrollments.length} Students Enrolled</p>
+                                </div>
+                                {classEnrollments.length > 0 && (
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 max-h-40 overflow-y-auto">
+                                        <ul className="space-y-1">
+                                            {classEnrollments.map(e => {
+                                                const s = students.find(st => st.id === e.studentId);
+                                                return s ? (
+                                                    <li key={e.id} className="text-sm text-slate-600 flex items-center">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-400 mr-2"></span>
+                                                        {s.name}
+                                                    </li>
+                                                ) : null;
+                                            })}
+                                        </ul>
+                                    </div>
+                                )}
+                                <div className="pt-2 flex space-x-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setActionState({ type: 'attendance', classId: c.id }); }}
+                                        className="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-primary-700 transition"
+                                    >
+                                        Attendance
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setActionState({ type: 'grades', classId: c.id }); }}
+                                        className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-bold shadow-sm border border-slate-200 hover:bg-slate-200 transition"
+                                    >
+                                        Grades
+                                    </button>
                                 </div>
                             </div>
                         </Card>
@@ -101,6 +137,22 @@ export const TeacherDashboard: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {actionState?.type === 'attendance' && (
+                <AttendanceModal
+                    classData={classes.find(c => c.id === actionState.classId)!}
+                    students={getStudentsForClass(actionState.classId)}
+                    onClose={() => setActionState(null)}
+                />
+            )}
+
+            {actionState?.type === 'grades' && (
+                <GradesModal
+                    classData={classes.find(c => c.id === actionState.classId)!}
+                    students={getStudentsForClass(actionState.classId)}
+                    onClose={() => setActionState(null)}
+                />
+            )}
         </div>
     );
 };
@@ -171,14 +223,14 @@ export const GuardDashboard: React.FC = () => {
                 <Card title="Daily Log Entry">
                     <form onSubmit={handleLogSubmit} className="space-y-4">
                         <div className="flex bg-slate-100 p-1 rounded-xl">
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setLogType('Entry')}
                                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${logType === 'Entry' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                             >
                                 Entry
                             </button>
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setLogType('Exit')}
                                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${logType === 'Exit' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500'}`}
@@ -186,16 +238,16 @@ export const GuardDashboard: React.FC = () => {
                                 Exit
                             </button>
                         </div>
-                        <input 
-                            type="text" 
-                            placeholder="Person Name" 
+                        <input
+                            type="text"
+                            placeholder="Person Name"
                             value={personName}
                             onChange={(e) => setPersonName(e.target.value)}
                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all text-black"
                             required
                         />
-                        <textarea 
-                            placeholder="Purpose of visit" 
+                        <textarea
+                            placeholder="Purpose of visit"
                             value={purpose}
                             onChange={(e) => setPurpose(e.target.value)}
                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all min-h-[80px] text-black"
@@ -205,7 +257,7 @@ export const GuardDashboard: React.FC = () => {
                         </button>
                     </form>
                 </Card>
-                <button 
+                <button
                     onClick={() => {
                         const title = window.prompt('Incident Title:');
                         if (title && currentUser) {
@@ -233,9 +285,9 @@ export const GuardDashboard: React.FC = () => {
                             <div key={log.id} className="flex items-start space-x-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                 <div className={`p-2 rounded-xl ${log.type === 'Entry' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
                                     {log.type === 'Entry' ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                     ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                     )}
                                 </div>
                                 <div className="flex-1">
@@ -257,7 +309,7 @@ export const GuardDashboard: React.FC = () => {
 // --- Cleaner Dashboard ---
 export const CleanerDashboard: React.FC = () => {
     const { roomStatuses, updateRoomStatus, currentUser } = useData();
-    
+
     // Mock rooms if none exist
     const rooms = roomStatuses.length > 0 ? roomStatuses : [
         { id: 'r1', roomName: 'Room 101', status: 'Cleaned', lastUpdatedBy: 'cleaner_1', timestamp: new Date().toISOString() },
@@ -281,14 +333,13 @@ export const CleanerDashboard: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-800">Facility Maintenance</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {rooms.map(room => (
-                    <div 
+                    <div
                         key={room.id}
                         onClick={() => toggleStatus(room)}
-                        className={`p-6 rounded-3xl border-2 cursor-pointer transition-all active:scale-95 ${
-                            room.status === 'Cleaned' 
-                            ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+                        className={`p-6 rounded-3xl border-2 cursor-pointer transition-all active:scale-95 ${room.status === 'Cleaned'
+                            ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
                             : 'bg-amber-50 border-amber-100 text-amber-800'
-                        }`}
+                            }`}
                     >
                         <div className="flex justify-between items-start mb-4">
                             <div className={`p-3 rounded-2xl ${room.status === 'Cleaned' ? 'bg-emerald-200' : 'bg-amber-200'}`}>

@@ -13,7 +13,7 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ userRole, onLogout, navigate, onToggleSidebar, isSidebarOpen }) => {
-    const { loading, isSyncing, lastSyncedAt, error } = useData();
+    const { loading, isSyncing, lastSyncedAt, error, currentUser } = useData();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -93,8 +93,8 @@ const Navbar: React.FC<NavbarProps> = ({ userRole, onLogout, navigate, onToggleS
 
                 <div className="flex items-center space-x-3">
                     <div className="text-right hidden xl:block">
-                        <p className="text-sm font-semibold text-slate-700">{userRole}</p>
-                        <p className="text-xs text-slate-400">Administrator</p>
+                        <p className="text-sm font-semibold text-slate-700">{currentUser?.name || userRole}</p>
+                        <p className="text-xs text-slate-400 capitalize">{userRole.toLowerCase()}</p>
                     </div>
                     <div className="relative">
                         <button
@@ -109,20 +109,24 @@ const Navbar: React.FC<NavbarProps> = ({ userRole, onLogout, navigate, onToggleS
                         {isProfileOpen && (
                             <div className="absolute right-0 mt-3 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
                                 <div className="px-4 py-2 border-b border-slate-100 mb-1 xl:hidden">
-                                    <p className="text-sm font-bold text-slate-800">{userRole}</p>
-                                    <p className="text-xs text-slate-500">Administrator</p>
+                                    <p className="text-sm font-bold text-slate-800">{currentUser?.name || userRole}</p>
+                                    <p className="text-xs text-slate-500 capitalize">{userRole.toLowerCase()}</p>
                                 </div>
-                                <button
-                                    onClick={() => { navigate('settings' as Page); setIsProfileOpen(false); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center space-x-3 transition-colors"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span>Settings</span>
-                                </button>
-                                <div className="h-px bg-slate-100 my-1"></div>
+                                {userRole === UserRole.Admin && (
+                                    <>
+                                        <button
+                                            onClick={() => { navigate('settings' as Page); setIsProfileOpen(false); }}
+                                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center space-x-3 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            <span>Settings</span>
+                                        </button>
+                                        <div className="h-px bg-slate-100 my-1"></div>
+                                    </>
+                                )}
                                 <button
                                     onClick={() => { onLogout(); setIsProfileOpen(false); }}
                                     className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center space-x-3 transition-colors"

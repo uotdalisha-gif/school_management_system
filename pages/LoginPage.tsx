@@ -27,7 +27,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             setDeferredPrompt(null);
             setIsInstalled(true);
         });
-        
+
         if (window.matchMedia('(display-mode: standalone)').matches) {
             setIsInstalled(true);
         }
@@ -54,9 +54,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 setError('Incorrect admin password.');
             }
         } else {
-            // Check if staff exists with this identifier and password
-            const foundStaff = staff.find(s => s.name === identifier && s.role === selectedRole);
-            
+            // Check if staff exists with this identifier (case-insensitive name OR contact) and password
+            const searchId = identifier.trim().toLowerCase();
+            const foundStaff = staff.find(s =>
+                (s.name.toLowerCase() === searchId || s.contact.toLowerCase() === searchId)
+                && s.role === selectedRole
+            );
+
             if (foundStaff) {
                 if (foundStaff.password) {
                     if (foundStaff.password === password) {
@@ -71,10 +75,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     onLogin(selectedRole);
                 }
             } else {
-                // If no staff found with that identifier, but role matches, allow demo login for roles that don't have staff records yet
-                // Or just show error if we want to be strict
+                // If no staff found with that identifier, but role matches, show error
                 if (staff.some(s => s.role === selectedRole)) {
-                    setError(`No ${selectedRole} found with name: ${identifier}`);
+                    setError(`No account found for "${identifier}" under the role: ${selectedRole}. Please check spelling or contact number.`);
                 } else {
                     // Demo fallback for roles without staff data
                     setCurrentUser({ id: 'demo_1', name: `Demo ${selectedRole}`, role: selectedRole });
@@ -89,7 +92,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-2xl shadow-2xl relative overflow-hidden">
                 {/* Decorative background element */}
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-primary-50 rounded-full opacity-50"></div>
-                
+
                 <div className="relative z-10 text-center">
                     <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-primary-200">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,7 +115,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                                 <p className="text-[11px] text-emerald-700 font-medium">Install for a standalone experience</p>
                             </div>
                         </div>
-                        <button 
+                        <button
                             onClick={handleInstall}
                             className="text-[11px] font-bold text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-all active:scale-95 shadow-sm"
                         >
@@ -138,7 +141,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
                     {selectedRole !== UserRole.Admin && (
                         <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
-                            <label htmlFor="identifier" className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Staff Name</label>
+                            <label htmlFor="identifier" className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Staff Name or Contact</label>
                             <input
                                 id="identifier"
                                 type="text"
@@ -160,7 +163,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                             name="password"
                             type="password"
                             autoComplete="current-password"
-                            required={selectedRole === UserRole.Admin || staff.some(s => s.name === identifier && s.password)}
+                            required={selectedRole === UserRole.Admin || staff.some(s => (s.name.toLowerCase() === identifier.trim().toLowerCase() || s.contact.toLowerCase() === identifier.trim().toLowerCase()) && s.password)}
                             value={password}
                             onChange={(e) => {
                                 setPassword(e.target.value);

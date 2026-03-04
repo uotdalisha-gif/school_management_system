@@ -14,7 +14,7 @@ interface ImportResults {
 }
 
 const ClassesPage: React.FC = () => {
-    const { classes, staff, students, timeSlots, levels, deleteClass, addClasses, highlightedClassId, setHighlightedClassId, enrollments } = useData();
+    const { classes, staff, students, timeSlots, levels, deleteClass, addClasses, highlightedClassId, setHighlightedClassId, enrollments, currentUser } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState<Class | null>(null);
     const highlightedRowRef = useRef<HTMLDivElement>(null);
@@ -99,11 +99,15 @@ const ClassesPage: React.FC = () => {
     };
 
     const filteredClasses = useMemo(() => {
-        return classes
+        let baseClasses = classes;
+        if (currentUser?.role === StaffRole.Teacher) {
+            baseClasses = classes.filter(cls => cls.teacherId === currentUser.id);
+        }
+        return baseClasses
             .filter(cls => selectedLevel === 'all' || cls.level === selectedLevel)
             .filter(cls => selectedTeacherIds.length === 0 || selectedTeacherIds.includes(cls.teacherId))
             .filter(cls => selectedTime === 'all' || cls.schedule.includes(selectedTime));
-    }, [classes, selectedLevel, selectedTeacherIds, selectedTime]);
+    }, [classes, selectedLevel, selectedTeacherIds, selectedTime, currentUser]);
 
     /**
      * Toggles the selection of a class for bulk actions.

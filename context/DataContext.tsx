@@ -51,8 +51,11 @@ interface DataContextType {
     deleteClass: (classId: string) => Promise<void>;
     addGrade: (grade: Omit<Grade, 'id'>) => Promise<void>;
     updateGrade: (grade: Grade) => Promise<void>;
+    saveGradeBatch: (grades: Grade[]) => Promise<void>;
     deleteGrade: (gradeId: string) => Promise<void>;
     addAttendance: (record: Omit<Attendance, 'id'>) => Promise<void>;
+    updateAttendance: (record: Attendance) => Promise<void>;
+    saveAttendanceBatch: (records: Attendance[]) => Promise<void>;
     deleteAttendance: (attendanceId: string) => Promise<void>;
     addStaffPermission: (permission: Omit<StaffPermission, 'id'>) => Promise<void>;
     updateStaffPermission: (permission: StaffPermission) => Promise<void>;
@@ -168,7 +171,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
      * Uses the batch sync RPC function for efficiency.
      */
     const triggerSync = useCallback(async () => {
-        if (!navigator.onLine || isSyncingRef.current) return;
+        if (!navigator.onLine || isSyncingRef.current || loading) return;
 
         isSyncingRef.current = true;
         setIsSyncing(true);
@@ -206,7 +209,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isSyncingRef.current = false;
             setIsSyncing(false);
         }
-    }, [students, staff, classes, events, grades, attendance, enrollments, subjects, levels, timeSlots, adminPassword]);
+    }, [students, staff, classes, events, grades, attendance, enrollments, subjects, levels, timeSlots, adminPassword, loading, staffPermissions, dailyLogs, incidentReports, roomStatuses]);
 
     // Background Sync on Online Recovery
     useEffect(() => {
@@ -328,6 +331,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const addGrade = (data: Omit<Grade, 'id'>) => performUpdate<Grade>((d) => apiService.saveGrades(d), setGrades, (prev) => [...prev, { ...data, id: `grade_${Date.now()}` }]);
     /** Updates an existing grade record. */
     const updateGrade = (updated: Grade) => performUpdate<Grade>((d) => apiService.saveGrades(d), setGrades, (prev) => prev.map(g => g.id === updated.id ? updated : g));
+    /** Saves or updates multiple grade records efficiently. */
+    const saveGradeBatch = (records: Grade[]) => performUpdate<Grade>((d) => apiService.saveGrades(d), setGrades, (prev) => {
+        const next = [...prev];
+        const updatedMap = new Map(records.map(r => [r.id, r]));
+        return [...next.filter(r => !updatedMap.has(r.id)), ...records];
+    });
     /** Deletes a grade record. */
     const deleteGrade = async (id: string) => {
         setGrades(prev => prev.filter(g => g.id !== id));
@@ -338,7 +347,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // --- Attendance Actions ---
     /** Adds a new attendance record. */
-    const addAttendance = (data: Omit<Attendance, 'id'>) => performUpdate<Attendance>((d) => apiService.saveAttendance(d), setAttendance, (prev) => [...prev, { ...data, id: `att_${Date.now()}` }]);
+    const addAttendance = (data: Omit<Attendance, 'id'>) => performUpdate<Attendance>((d) => apiService.saveAttendance(d), setAttendance, (prev) => [...prev, { ...data, id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }]);
+    /** Updates an existing attendance record. */
+    const updateAttendance = (updated: Attendance) => performUpdate<Attendance>((d) => apiService.saveAttendance(d), setAttendance, (prev) => prev.map(a => a.id === updated.id ? updated : a));
+    /** Saves or updates multiple attendance records efficiently. */
+    const saveAttendanceBatch = (records: Attendance[]) => performUpdate<Attendance>((d) => apiService.saveAttendance(d), setAttendance, (prev) => {
+        const next = [...prev];
+        const updatedMap = new Map(records.map(r => [r.id, r]));
+        return [...next.filter(r => !updatedMap.has(r.id)), ...records];
+    });
     /** Deletes an attendance record. */
     const deleteAttendance = async (id: string) => {
         setAttendance(prev => prev.filter(a => a.id !== id));
@@ -504,8 +521,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addStudent, addStudents, updateStudent, updateStudentsBatch, deleteStudent,
         addStaff, addStaffBatch, updateStaff, deleteStaff,
         addClass, addClasses, updateClass, deleteClass,
-        addGrade, updateGrade, deleteGrade,
-        addAttendance, deleteAttendance,
+        addGrade, updateGrade, saveGradeBatch, deleteGrade,
+        addAttendance, updateAttendance, saveAttendanceBatch, deleteAttendance,
         addStaffPermission, updateStaffPermission, deleteStaffPermission,
         addDailyLog, addIncidentReport, updateRoomStatus,
         addEnrollment, deleteEnrollment, updateClassEnrollments,

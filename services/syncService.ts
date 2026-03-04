@@ -58,7 +58,6 @@ export const syncService = {
             const configToSync: { key: string, value: any }[] = [];
             if (payload.config) {
                 for (const c of payload.config) {
-                    if (Array.isArray(c.value) && c.value.length === 0) continue;
                     configToSync.push(c);
                 }
             }
