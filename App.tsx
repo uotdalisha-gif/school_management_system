@@ -13,6 +13,7 @@ import ClassesPage from './pages/ClassesPage';
 import ReportsPage from './pages/ReportsPage';
 import SchedulePage from './pages/SchedulePage';
 import SettingsPage from './pages/SettingsPage';
+import MessagesPage from './pages/MessagesPage';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import { Page, UserRole } from './types';
@@ -27,6 +28,7 @@ const pathToPage: Record<string, Page> = {
   'reports': Page.Reports,
   'schedule': Page.Schedule,
   'settings': Page.Settings,
+  'messages': Page.Messages,
 };
 
 // Maps Page enum → URL path
@@ -38,6 +40,7 @@ const pageToPath: Record<Page, string> = {
   [Page.Reports]: 'reports',
   [Page.Schedule]: 'schedule',
   [Page.Settings]: 'settings',
+  [Page.Messages]: 'messages',
 };
 
 /** Read the current URL to determine the starting page. */
@@ -103,6 +106,7 @@ function App() {
       case Page.Reports: return <ReportsPage />;
       case Page.Schedule: return <SchedulePage />;
       case Page.Settings: return <SettingsPage onLogout={handleLogout} userRole={currentUser.role} />;
+      case Page.Messages: return <MessagesPage />;
       default: return <DashboardPage navigate={navigate} />;
     }
   };

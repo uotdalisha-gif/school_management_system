@@ -29,6 +29,7 @@ export enum Page {
     Reports = 'Reports',
     Schedule = 'Schedule',
     Settings = 'Settings',
+    Messages = 'Messages',
 }
 
 export enum StudentStatus {
@@ -168,4 +169,25 @@ export interface RoomStatus {
     status: 'Cleaned' | 'Needs Attention';
     lastUpdatedBy: string;
     timestamp: string;
+}
+
+export type MessageType = 'text' | 'leave_request' | 'sick_report' | 'incident' | 'announcement';
+export type MessageStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Message {
+    id: string;
+    senderId: string;
+    senderName: string;
+    recipientId: string;    // staff ID, 'admin', or 'all'
+    type: MessageType;
+    content: string;
+    metadata?: {
+        startDate?: string;
+        endDate?: string;
+        leaveType?: string;
+        status?: MessageStatus;
+        severity?: 'Low' | 'Medium' | 'High';
+    };
+    isRead: boolean;
+    createdAt: string;
 }

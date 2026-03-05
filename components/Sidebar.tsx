@@ -12,25 +12,36 @@ interface SidebarProps {
 }
 
 const NavItem: React.FC<{
-  icon: React.ReactNode;
-  label: Page;
-  isActive: boolean;
-  onClick: () => void;
-}> = ({ icon, label, isActive, onClick }) => (
+    icon: React.ReactNode;
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+    badge?: number;
+}> = ({ icon, label, isActive, onClick, badge }) => (
     <li
         onClick={onClick}
-        className={`group flex items-center px-3 py-2.5 mb-1 rounded-md cursor-pointer transition-all duration-200 ${
-            isActive 
-                ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500' 
+        className={`group flex items-center px-3 py-2.5 mb-1 rounded-md cursor-pointer transition-all duration-200 ${isActive
+                ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500'
                 : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border-l-2 border-transparent'
-        }`}
+            }`}
     >
         <span className={`${isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-100'}`}>
             {icon}
         </span>
-        <span className="mx-3 text-sm font-medium">{label}</span>
-        {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
+        <span className="mx-3 text-sm font-medium flex-1">{label}</span>
+        {badge != null && badge > 0 && (
+            <span className="ml-auto min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg">
+                {badge > 9 ? '9+' : badge}
+            </span>
+        )}
+        {isActive && !badge && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
     </li>
+);
+
+const ChatIcon = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
 );
 
 const Sidebar: React.FC<SidebarProps> = ({ navigate, currentPage, userRole, isOpen, onClose }) => {
@@ -43,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigate, currentPage, userRole, isOp
     return (
         <>
             {/* Mobile Overlay */}
-            <div 
+            <div
                 className={`fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 transition-opacity duration-300 lg:hidden ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 onClick={onClose}
             />
@@ -69,24 +80,32 @@ const Sidebar: React.FC<SidebarProps> = ({ navigate, currentPage, userRole, isOp
                     <div className="mb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Main Menu</div>
                     <ul>
                         <NavItem icon={<DashboardIcon />} label={Page.Dashboard} isActive={currentPage === Page.Dashboard} onClick={() => navigate(Page.Dashboard)} />
-                        
+
                         {(isAdmin || isTeacher || isOffice) && (
                             <NavItem icon={<StudentsIcon />} label={Page.Students} isActive={currentPage === Page.Students} onClick={() => navigate(Page.Students)} />
                         )}
-                        
+
                         {isAdmin && (
                             <NavItem icon={<TeachersIcon />} label={Page.Staff} isActive={currentPage === Page.Staff} onClick={() => navigate(Page.Staff)} />
                         )}
-                        
+
                         {(isAdmin || isTeacher) && (
                             <NavItem icon={<ClassesIcon />} label={Page.Classes} isActive={currentPage === Page.Classes} onClick={() => navigate(Page.Classes)} />
                         )}
-                        
+
                         {(isAdmin || isTeacher) && (
                             <NavItem icon={<ScheduleIcon />} label={Page.Schedule} isActive={currentPage === Page.Schedule} onClick={() => navigate(Page.Schedule)} />
                         )}
+
+                        {/* Messages — visible to all roles */}
+                        <NavItem
+                            icon={<ChatIcon />}
+                            label="Messages"
+                            isActive={currentPage === Page.Messages}
+                            onClick={() => navigate(Page.Messages)}
+                        />
                     </ul>
-                    
+
                     {(isAdmin || isOffice) && (
                         <>
                             <div className="mt-8 mb-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Analytics</div>
@@ -96,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navigate, currentPage, userRole, isOp
                         </>
                     )}
                 </nav>
-                
+
                 <div className="p-4 border-t border-slate-800/50 bg-slate-900">
                     <div onClick={() => navigate(Page.Settings)} className={`flex items-center p-2 rounded-lg cursor-pointer transition-colors ${currentPage === Page.Settings ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                         <SettingsIcon />
