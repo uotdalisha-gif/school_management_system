@@ -173,18 +173,18 @@ const MessageBubble: React.FC<{
                         : <IncidentCard msg={msg} isMine={isMine} />
                 ) : editing ? (
                     // Inline edit mode
-                    <div className="flex flex-col gap-1.5" style={{ minWidth: 200 }}>
+                    <div className="flex flex-col gap-2 w-[75vw] sm:w-[320px] md:w-[400px] max-w-full">
                         <textarea
                             autoFocus
                             value={editText}
                             onChange={e => setEditText(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); } if (e.key === 'Escape') setEditing(false); }}
-                            rows={3}
-                            className="px-3 py-2 border-2 border-primary-400 rounded-xl text-sm resize-none focus:outline-none bg-white text-slate-800 shadow"
+                            rows={4}
+                            className="w-full px-3 py-2.5 border-2 border-primary-400 rounded-xl text-sm resize-none focus:outline-none bg-white text-slate-800 shadow-sm leading-relaxed"
                         />
-                        <div className="flex gap-1.5 justify-end">
-                            <button onClick={() => setEditing(false)} className="px-2.5 py-1 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-                            <button onClick={handleSaveEdit} className="px-2.5 py-1 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700">Save</button>
+                        <div className="flex gap-2 justify-end">
+                            <button onClick={() => setEditing(false)} className="px-4 py-1.5 text-xs font-semibold text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+                            <button onClick={handleSaveEdit} className="px-4 py-1.5 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">Save</button>
                         </div>
                     </div>
                 ) : (
