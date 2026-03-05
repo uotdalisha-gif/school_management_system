@@ -26,20 +26,40 @@ export const AdminDashboard: React.FC = () => {
         ];
     }, [students]);
 
+    const hasRevenueData = revenueData.some(d => d.value > 0);
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card title="Revenue Status">
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={revenueData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                    {revenueData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                                </Pie>
-                                <Tooltip />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <div style={{ width: '100%', height: 256 }}>
+                        {hasRevenueData ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={revenueData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                        {revenueData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                    </Pie>
+                                    <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+                                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-500">No tuition data yet</p>
+                                    <p className="text-xs text-slate-400 mt-1">Edit students to add tuition amounts</p>
+                                </div>
+                                <div className="flex gap-4 text-xs font-medium">
+                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>Paid</span>
+                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>Unpaid</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </Card>
                 <Card title="Staff Overview">
@@ -73,7 +93,6 @@ export const AdminDashboard: React.FC = () => {
 };
 
 // --- Teacher Dashboard ---
-console.log('Teacher Dashboard Initializing...')
 export const TeacherDashboard: React.FC = () => {
     const { currentUser, classes, enrollments, students } = useData();
     const myClasses = classes.filter(c => c.teacherId === currentUser?.id);
