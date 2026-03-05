@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page, UserRole } from '../types';
 import { DashboardIcon, StudentsIcon, TeachersIcon, ClassesIcon, ReportsIcon, SettingsIcon, ScheduleIcon } from './icons/SidebarIcons';
+import { useData } from '../context/DataContext';
+import { fetchUnreadCount, ADMIN_KEY } from '../services/messageService';
 
 interface SidebarProps {
     navigate: (page: Page) => void;
@@ -21,20 +23,25 @@ const NavItem: React.FC<{
     <li
         onClick={onClick}
         className={`group flex items-center px-3 py-2.5 mb-1 rounded-md cursor-pointer transition-all duration-200 ${isActive
-                ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500'
-                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border-l-2 border-transparent'
+            ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500'
+            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800 border-l-2 border-transparent'
             }`}
     >
-        <span className={`${isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-100'}`}>
+        <span className={`relative ${isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-100'}`}>
             {icon}
+            {/* Tiny dot on icon when there's an unread badge */}
+            {badge != null && badge > 0 && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+            )}
         </span>
         <span className="mx-3 text-sm font-medium flex-1">{label}</span>
-        {badge != null && badge > 0 && (
-            <span className="ml-auto min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg">
+        {badge != null && badge > 0 ? (
+            <span className="ml-auto min-w-[20px] h-5 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1.5 shadow-lg shadow-rose-500/30 animate-pulse">
                 {badge > 9 ? '9+' : badge}
             </span>
-        )}
-        {isActive && !badge && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>}
+        ) : isActive ? (
+            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+        ) : null}
     </li>
 );
 
@@ -50,6 +57,22 @@ const Sidebar: React.FC<SidebarProps> = ({ navigate, currentPage, userRole, isOp
     const isOffice = userRole === UserRole.OfficeWorker;
     const isGuard = userRole === UserRole.Guard;
     const isCleaner = userRole === UserRole.Cleaner;
+
+    const { currentUser } = useData();
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Poll unread message count every 15 seconds
+    useEffect(() => {
+        if (!currentUser) return;
+        const dbId = isAdmin ? ADMIN_KEY : currentUser.id;
+        const check = async () => {
+            const count = await fetchUnreadCount(dbId, isAdmin);
+            setUnreadCount(count);
+        };
+        check();
+        const interval = setInterval(check, 15000);
+        return () => clearInterval(interval);
+    }, [currentUser, isAdmin]);
 
     return (
         <>
@@ -97,12 +120,13 @@ const Sidebar: React.FC<SidebarProps> = ({ navigate, currentPage, userRole, isOp
                             <NavItem icon={<ScheduleIcon />} label={Page.Schedule} isActive={currentPage === Page.Schedule} onClick={() => navigate(Page.Schedule)} />
                         )}
 
-                        {/* Messages — visible to all roles */}
+                        {/* Messages — visible to all roles, shows unread badge */}
                         <NavItem
                             icon={<ChatIcon />}
                             label="Messages"
                             isActive={currentPage === Page.Messages}
                             onClick={() => navigate(Page.Messages)}
+                            badge={unreadCount}
                         />
                     </ul>
 
