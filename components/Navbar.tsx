@@ -159,7 +159,7 @@ const Navbar: React.FC<NavbarProps> = ({ userRole, onLogout, navigate, onToggleS
                             onBlur={() => setTimeout(() => setIsProfileOpen(false), 200)}
                             className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 font-bold hover:bg-slate-200 transition-all focus:ring-2 focus:ring-primary-500 focus:outline-none focus:ring-offset-1"
                         >
-                            {userRole.charAt(0)}
+                            {(currentUser?.name || userRole).charAt(0).toUpperCase()}
                         </button>
 
                         {/* Dropdown Menu */}

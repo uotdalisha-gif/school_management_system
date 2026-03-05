@@ -4,7 +4,7 @@ import { Message, MessageType, UserRole } from '../types';
 import {
     fetchMessages, sendMessage, markAsRead,
     updateLeaveStatus, subscribeToMessages,
-    deleteOldMessages, deleteMessage, ADMIN_KEY
+    deleteOldMessages, deleteMessage, updateMessage, uploadAttachment, ADMIN_KEY
 } from '../services/messageService';
 
 // ─────────────────────────────────────────────
@@ -135,10 +135,19 @@ const MessageBubble: React.FC<{
     isAdmin: boolean;
     onStatusChange: (id: string, status: 'approved' | 'rejected') => void;
     onDelete: (id: string) => void;
-}> = ({ msg, isMine, isAdmin, onStatusChange, onDelete }) => {
+    onEdit: (id: string, newContent: string) => void;
+}> = ({ msg, isMine, isAdmin, onStatusChange, onDelete, onEdit }) => {
     const [hover, setHover] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [editText, setEditText] = useState(msg.content);
     const isCard = msg.type === 'leave_request' || msg.type === 'incident';
     const isPending = msg.metadata?.status === 'pending';
+    const isEdited = msg.metadata?.edited;
+
+    const handleSaveEdit = () => {
+        if (editText.trim() && editText !== msg.content) onEdit(msg.id, editText.trim());
+        setEditing(false);
+    };
 
     return (
         <div
@@ -162,6 +171,22 @@ const MessageBubble: React.FC<{
                     msg.type === 'leave_request'
                         ? <LeaveCard msg={msg} isMine={isMine} />
                         : <IncidentCard msg={msg} isMine={isMine} />
+                ) : editing ? (
+                    // Inline edit mode
+                    <div className="flex flex-col gap-1.5" style={{ minWidth: 200 }}>
+                        <textarea
+                            autoFocus
+                            value={editText}
+                            onChange={e => setEditText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); } if (e.key === 'Escape') setEditing(false); }}
+                            rows={3}
+                            className="px-3 py-2 border-2 border-primary-400 rounded-xl text-sm resize-none focus:outline-none bg-white text-slate-800 shadow"
+                        />
+                        <div className="flex gap-1.5 justify-end">
+                            <button onClick={() => setEditing(false)} className="px-2.5 py-1 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+                            <button onClick={handleSaveEdit} className="px-2.5 py-1 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700">Save</button>
+                        </div>
+                    </div>
                 ) : (
                     <div className={`rounded-2xl px-4 py-2.5 shadow-sm ${isMine
                         ? 'bg-primary-600 text-white rounded-tr-sm'
@@ -177,7 +202,22 @@ const MessageBubble: React.FC<{
                                 <span className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">Announcement</span>
                             </div>
                         )}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        {/* Image attachment */}
+                        {msg.metadata?.imageUrl && (
+                            <a href={msg.metadata.imageUrl} target="_blank" rel="noreferrer" className="block mb-2">
+                                <img src={msg.metadata.imageUrl} alt="attachment" className="max-w-[220px] rounded-xl border border-white/20 object-cover" />
+                            </a>
+                        )}
+                        {/* File attachment */}
+                        {msg.metadata?.fileUrl && !msg.metadata?.imageUrl && (
+                            <a href={msg.metadata.fileUrl} target="_blank" rel="noreferrer"
+                                className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
+                                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                <span className="text-xs font-medium truncate">{msg.metadata.fileName || 'Download file'}</span>
+                            </a>
+                        )}
+                        {msg.content && <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                        {isEdited && <span className="text-[10px] opacity-60 mt-0.5 block">edited</span>}
                     </div>
                 )}
 
@@ -195,19 +235,30 @@ const MessageBubble: React.FC<{
                     </div>
                 )}
 
-                {/* Time + delete row */}
-                <div className={`flex items-center gap-2 mt-1 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                {/* Time + actions row */}
+                <div className={`flex items-center gap-1.5 mt-1 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                     <span className="text-[10px] text-slate-400">{formatTime(msg.createdAt)}</span>
                     {isMine && (
                         <span className="text-[10px] text-slate-400">{msg.isRead ? '✓✓' : '✓'}</span>
                     )}
-                    {/* Delete / unsend button — own messages only */}
-                    {isMine && (
+                    {/* Edit button — own plain-text messages only */}
+                    {isMine && !isCard && !editing && (
+                        <button
+                            onClick={() => { setEditText(msg.content); setEditing(true); }}
+                            className={`transition-all text-slate-300 hover:text-blue-400 ${hover ? 'opacity-100' : 'opacity-0'}`}
+                            title="Edit"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                    )}
+                    {/* Delete / unsend button */}
+                    {isMine && !editing && (
                         <button
                             onClick={() => onDelete(msg.id)}
-                            className={`transition-all text-slate-300 hover:text-red-500 ${hover ? 'opacity-100' : 'opacity-0 md:opacity-0'} md:focus:opacity-100`}
+                            className={`transition-all text-slate-300 hover:text-red-500 ${hover ? 'opacity-100' : 'opacity-0'}`}
                             title="Unsend"
-                            style={{ lineHeight: 1 }}
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -398,6 +449,8 @@ const MessagesPage: React.FC = () => {
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [modal, setModal] = useState<null | 'leave' | 'incident'>(null);
+    const [attachment, setAttachment] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [announcementMode, setAnnouncementMode] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -495,16 +548,39 @@ const MessagesPage: React.FC = () => {
     // ── Send message
     const handleSend = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!text.trim() || sending) return;
+        if ((!text.trim() && !attachment) || sending) return;
+
         setSending(true);
         const recipient = announcementMode ? 'all' : (isAdmin ? activeConversation : ADMIN_KEY);
+
+        let metadata: any = undefined;
+        if (attachment) {
+            const fileUrl = await uploadAttachment(attachment);
+            if (fileUrl) {
+                const isImage = attachment.type.startsWith('image/');
+                metadata = isImage
+                    ? { imageUrl: fileUrl, fileName: attachment.name }
+                    : { fileUrl, fileName: attachment.name };
+            }
+        }
+
         const newMsg = await sendMessage({
             senderId: myDbId, senderName: myName, recipientId: recipient,
             type: announcementMode ? 'announcement' : 'text',
-            content: text.trim(), isAdmin,
+            content: text.trim(), metadata, isAdmin,
         });
-        if (newMsg) { setMessages(prev => [...prev, newMsg]); setText(''); }
+
+        if (newMsg) {
+            setMessages(prev => [...prev, newMsg]);
+            setText('');
+            setAttachment(null);
+        }
         setSending(false);
+    };
+
+    const handleEdit = async (id: string, newContent: string) => {
+        await updateMessage(id, newContent);
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: newContent, metadata: { ...m.metadata, edited: true } } : m));
     };
 
     // ── Quick send (leave / incident)
@@ -685,6 +761,7 @@ const MessagesPage: React.FC = () => {
                                     isMine={isMine(msg)} isAdmin={isAdmin}
                                     onStatusChange={handleStatusChange}
                                     onDelete={handleDelete}
+                                    onEdit={handleEdit}
                                 />
                             ))}
                             <div ref={bottomRef} />
@@ -700,7 +777,40 @@ const MessagesPage: React.FC = () => {
                             <span className="text-xs font-medium text-blue-700">Broadcast to all staff</span>
                         </div>
                     )}
+
+                    {/* Attachment Preview */}
+                    {attachment && (
+                        <div className="mb-2 relative inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg">
+                            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            <span className="text-xs font-medium text-slate-700 max-w-[200px] truncate">{attachment.name}</span>
+                            <button type="button" onClick={() => setAttachment(null)} className="ml-1 text-slate-400 hover:text-red-500">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    )}
+
                     <div className="flex items-end gap-2">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={e => {
+                                if (e.target.files?.[0]) setAttachment(e.target.files[0]);
+                                e.target.value = ''; // reset so you can select the same file again if needed
+                            }}
+                            className="hidden"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-10 h-10 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors shrink-0"
+                            title="Attach file or image"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                        </button>
                         <textarea
                             value={text}
                             onChange={e => setText(e.target.value)}
@@ -709,7 +819,7 @@ const MessagesPage: React.FC = () => {
                             rows={1}
                             className="flex-1 px-4 py-2.5 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none resize-none max-h-28 bg-slate-50"
                         />
-                        <button type="submit" disabled={!text.trim() || sending}
+                        <button type="submit" disabled={(!text.trim() && !attachment) || sending}
                             className="w-10 h-10 bg-primary-600 text-white rounded-2xl flex items-center justify-center hover:bg-primary-700 transition-colors disabled:opacity-40 shadow-lg shadow-primary-200 shrink-0">
                             {sending
                                 ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

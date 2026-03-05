@@ -100,6 +100,31 @@ export async function deleteMessage(messageId: string): Promise<void> {
     await client.from('messages').delete().eq('id', messageId);
 }
 
+/** Edit (update) a message's content */
+export async function updateMessage(messageId: string, newContent: string): Promise<void> {
+    const client = getSupabase();
+    if (!client) return;
+    await client
+        .from('messages')
+        .update({ content: newContent, metadata: { edited: true, editedAt: new Date().toISOString() } })
+        .eq('id', messageId);
+}
+
+/** Upload a file/image to Supabase Storage and return its public URL */
+export async function uploadAttachment(file: File): Promise<string | null> {
+    const client = getSupabase();
+    if (!client) return null;
+    const ext = file.name.split('.').pop();
+    const path = `messages/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+    const { error } = await client.storage.from('attachments').upload(path, file, { upsert: true });
+    if (error) {
+        console.error('Upload failed:', error);
+        return null;
+    }
+    const { data } = client.storage.from('attachments').getPublicUrl(path);
+    return data?.publicUrl || null;
+}
+
 /** Update leave request status (admin only) */
 export async function updateLeaveStatus(messageId: string, status: 'approved' | 'rejected'): Promise<void> {
     const client = getSupabase();
