@@ -257,7 +257,8 @@ const MessagesPage: React.FC = () => {
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeConversation, setActiveConversation] = useState<string>(''); // staff ID or 'all'
+    const [activeConversation, setActiveConversation] = useState<string>('');
+    const [mobileShowChat, setMobileShowChat] = useState(false); // mobile: false=sidebar, true=chat
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
     const [modal, setModal] = useState<null | 'leave_request' | 'sick_report' | 'incident'>(null);
@@ -275,7 +276,10 @@ const MessagesPage: React.FC = () => {
                     .map(m => m.senderId === ADMIN_KEY ? m.recipientId : m.senderId)
                     .filter(id => id !== 'all')
                 )];
-                setActiveConversation(ids[0] || staff[0]?.id || '');
+                // On desktop auto-select first, on mobile stay on sidebar
+                if (ids[0] || staff[0]?.id) {
+                    setActiveConversation(ids[0] || staff[0]?.id || '');
+                }
             } else {
                 setActiveConversation(ADMIN_KEY);
             }
@@ -396,8 +400,12 @@ const MessagesPage: React.FC = () => {
     return (
         <div className="flex h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden">
 
-            {/* ── Left: Conversation List (Admin) or Quick Actions (Staff) ── */}
-            <div className="w-72 shrink-0 border-r border-slate-200 flex flex-col bg-slate-50">
+            {/* ── Left: Conversation List / Quick Actions ── */}
+            {/* On mobile: only show when mobileShowChat=false. On desktop: always show */}
+            <div className={`
+                w-full md:w-72 shrink-0 border-r border-slate-200 flex flex-col bg-slate-50
+                ${mobileShowChat ? 'hidden md:flex' : 'flex'}
+            `}>
                 <div className="p-4 border-b border-slate-200">
                     <h2 className="text-lg font-bold text-slate-800">
                         {isAdmin ? 'Messages' : 'Staff Inbox'}
@@ -412,7 +420,7 @@ const MessagesPage: React.FC = () => {
                     <div className="flex-1 overflow-y-auto">
                         {/* Announcement broadcast button */}
                         <button
-                            onClick={() => { setActiveConversation('all'); setAnnouncementMode(true); }}
+                            onClick={() => { setActiveConversation('all'); setAnnouncementMode(true); setMobileShowChat(true); }}
                             className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-100 transition-colors ${activeConversation === 'all' ? 'bg-blue-50' : 'hover:bg-white'}`}
                         >
                             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
@@ -429,7 +437,7 @@ const MessagesPage: React.FC = () => {
                         {staffConversations.map(conv => (
                             <button
                                 key={conv.id}
-                                onClick={() => { setActiveConversation(conv.id); setAnnouncementMode(false); }}
+                                onClick={() => { setActiveConversation(conv.id); setAnnouncementMode(false); setMobileShowChat(true); }}
                                 className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-100 transition-colors ${activeConversation === conv.id ? 'bg-primary-50 border-l-2 border-l-primary-500' : 'hover:bg-white'}`}
                             >
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-sm font-bold shrink-0">
@@ -461,7 +469,7 @@ const MessagesPage: React.FC = () => {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Quick Actions</p>
 
                         <button
-                            onClick={() => setModal('leave_request')}
+                            onClick={() => { setModal('leave_request'); setMobileShowChat(true); }}
                             className="w-full flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors text-left"
                         >
                             <span className="text-xl">📅</span>
@@ -472,7 +480,7 @@ const MessagesPage: React.FC = () => {
                         </button>
 
                         <button
-                            onClick={() => setModal('sick_report')}
+                            onClick={() => { setModal('sick_report'); setMobileShowChat(true); }}
                             className="w-full flex items-center gap-3 p-3 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-colors text-left"
                         >
                             <span className="text-xl">🤒</span>
@@ -483,7 +491,7 @@ const MessagesPage: React.FC = () => {
                         </button>
 
                         <button
-                            onClick={() => setModal('incident')}
+                            onClick={() => { setModal('incident'); setMobileShowChat(true); }}
                             className="w-full flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors text-left"
                         >
                             <span className="text-xl">⚠️</span>
@@ -494,16 +502,32 @@ const MessagesPage: React.FC = () => {
                         </button>
 
                         <div className="mt-6 pt-4 border-t border-slate-200">
-                            <p className="text-xs text-slate-400 text-center">Or type a message below to contact admin directly</p>
+                            <button
+                                onClick={() => setMobileShowChat(true)}
+                                className="w-full text-xs text-slate-400 text-center hover:text-primary-600 transition-colors py-2"
+                            >
+                                💬 Tap to type a message to admin
+                            </button>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* ── Right: Chat Window ── */}
-            <div className="flex-1 flex flex-col min-w-0">
+            {/* On mobile: only show when mobileShowChat=true. On desktop: always show */}
+            <div className={`flex-1 flex flex-col min-w-0 w-full ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
                 {/* Chat Header */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-white/80 backdrop-blur-sm">
+                <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-100 bg-white/80 backdrop-blur-sm">
+                    {/* Mobile back button */}
+                    <button
+                        onClick={() => setMobileShowChat(false)}
+                        className="md:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors mr-1 shrink-0"
+                        aria-label="Back to conversations"
+                    >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
                     {activeConversation === 'all' ? (
                         <>
                             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
