@@ -1,4 +1,5 @@
 import { Student, Staff, Class, Grade, Attendance, Enrollment } from '../types';
+import * as XLSX from 'xlsx';
 
 // Function to escape CSV fields if they contain commas or quotes
 /**
@@ -26,6 +27,17 @@ const calculateAge = (dobString: string): number => {
     return age;
 };
 
+/**
+ * Converts a 10-point score to a letter grade.
+ */
+const getLetterGrade = (score: number): string => {
+    if (score >= 9.0) return 'A';
+    if (score >= 8.0) return 'B';
+    if (score >= 7.0) return 'C';
+    if (score >= 6.0) return 'D';
+    return 'F';
+};
+
 export interface ExportColumnConfig {
     key: keyof Student | 'age' | 'avgScore' | 'attendanceRate';
     label: string;
@@ -36,7 +48,7 @@ export interface ExportColumnConfig {
  * Generates a CSV string representing student progress, including average scores and attendance rates.
  */
 export const generateStudentProgressCSV = (
-    students: Student[], 
+    students: Student[],
     allGrades: Grade[],
     allAttendance: Attendance[],
     config?: ExportColumnConfig[]
@@ -88,6 +100,40 @@ export const generateStudentProgressCSV = (
 };
 
 /**
+ * Generates structured data for a specific class or level export, ready for Excel conversion.
+ */
+export const generateClassProgressData = (
+    className: string,
+    students: Student[],
+    allGrades: Grade[],
+    allAttendance: Attendance[]
+): any[] => {
+    return students.map(student => {
+        const studentGrades = allGrades.filter(g => g.studentId === student.id);
+        const studentAttendance = allAttendance.filter(a => a.studentId === student.id);
+
+        // Calculate Attendance
+        const totalDays = studentAttendance.length;
+        const presentDays = studentAttendance.filter(a => a.status === 'Present').length;
+        const attendanceRate = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(0) + '%' : 'N/A';
+
+        // Calculate Average Grade Letter
+        const totalScore = studentGrades.reduce((sum, grade) => sum + grade.score, 0);
+        const avgScore = studentGrades.length > 0 ? totalScore / studentGrades.length : null;
+        const letterGrade = avgScore !== null ? getLetterGrade(avgScore) : 'N/A';
+
+        return {
+            'Student ID': student.id,
+            'Student Name': student.name,
+            'Date of Birth': student.dob,
+            'Contact Phone': student.phone || 'N/A',
+            'Attendance %': attendanceRate,
+            'Average Grade Level': letterGrade,
+        };
+    });
+};
+
+/**
  * Generates a simple CSV list of students with basic information.
  */
 export const generateStudentListCSV = (students: Student[]): string => {
@@ -131,10 +177,10 @@ export const generateStaffCSV = (staff: Staff[]): string => {
  */
 export const generateSingleClassCSV = (cls: Class, allStaff: Staff[], allStudents: Student[], allEnrollments: Enrollment[]): string => {
     const teacher = allStaff.find(s => s.id === cls.teacherId);
-    
+
     const classEnrollments = allEnrollments.filter(e => e.classId === cls.id);
     const studentIds = classEnrollments.map(e => e.studentId);
-    
+
     // Sort students by name for the roster
     const classStudents = allStudents
         .filter(s => studentIds.includes(s.id))

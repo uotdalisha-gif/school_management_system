@@ -14,6 +14,7 @@ const StaffPermissionModal: React.FC<StaffPermissionModalProps> = ({ staff, onCl
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [reason, setReason] = useState('');
+    const [deletingPermissionId, setDeletingPermissionId] = useState<string | null>(null);
 
     const permissions = staffPermissions.filter(p => p.staffId === staff.id);
 
@@ -84,8 +85,8 @@ const StaffPermissionModal: React.FC<StaffPermissionModalProps> = ({ staff, onCl
                                             <div className="space-y-3">
                                                 <div className="flex items-center space-x-3">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${p.type === LeaveType.Annual ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                                            p.type === LeaveType.Personal ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                                                                'bg-purple-100 text-purple-700 border border-purple-200'
+                                                        p.type === LeaveType.Personal ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                                            'bg-purple-100 text-purple-700 border border-purple-200'
                                                         }`}>
                                                         {p.type}
                                                     </span>
@@ -99,17 +100,41 @@ const StaffPermissionModal: React.FC<StaffPermissionModalProps> = ({ staff, onCl
                                                     {p.reason || <span className="italic text-slate-400">No specific reason provided.</span>}
                                                 </p>
                                             </div>
-                                            <button
-                                                onClick={() => {
-                                                    if (window.confirm('Delete this permission record?')) deleteStaffPermission(p.id);
-                                                }}
-                                                className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                                title="Delete Record"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
+
+                                            {deletingPermissionId === p.id ? (
+                                                <div className="flex flex-col items-end space-y-2 animate-in fade-in zoom-in duration-200">
+                                                    <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Are you sure?</span>
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={() => setDeletingPermissionId(null)}
+                                                            className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                                                            title="Cancel"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                deleteStaffPermission(p.id);
+                                                                setDeletingPermissionId(null);
+                                                            }}
+                                                            className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm shadow-red-200 transition-colors"
+                                                            title="Confirm Delete"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setDeletingPermissionId(p.id)}
+                                                    className="p-3 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all focus:opacity-100 flex-shrink-0 opacity-100 sm:opacity-50 sm:hover:opacity-100 sm:group-hover:opacity-100"
+                                                    title="Delete Record"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -200,7 +225,7 @@ const StaffPermissionModal: React.FC<StaffPermissionModalProps> = ({ staff, onCl
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

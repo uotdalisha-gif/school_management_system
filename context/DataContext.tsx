@@ -107,7 +107,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [currentUser, setCurrentUser] = useState<{ id: string, name: string, role: UserRole } | null>(() => {
         try {
             const saved = localStorage.getItem('school_admin_currentUser');
-            return saved ? JSON.parse(saved) : null;
+            if (saved) {
+                const user = JSON.parse(saved);
+                // Fix legacy cached "Demo User" for admin accounts
+                if (user.role === UserRole.Admin && (user.name === 'Demo User' || user.name === 'Demo Admin')) {
+                    user.name = 'Administrator';
+                }
+                return user;
+            }
+            return null;
         } catch { return null; }
     });
     const [highlightedStudentId, setHighlightedStudentId] = useState<string | null>(null);

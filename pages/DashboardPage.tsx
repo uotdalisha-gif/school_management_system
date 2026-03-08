@@ -45,7 +45,7 @@ const MiniCalendar: React.FC = () => {
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
     const startDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
     const currentDay = today.getDate();
-    
+
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const padding = Array.from({ length: startDay }, (_, i) => i);
     const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -62,8 +62,8 @@ const MiniCalendar: React.FC = () => {
             <div className="grid grid-cols-7 gap-1 text-center text-sm">
                 {padding.map(i => <div key={`pad-${i}`} />)}
                 {days.map(d => (
-                    <div 
-                        key={d} 
+                    <div
+                        key={d}
                         className={`
                             h-8 w-8 flex items-center justify-center rounded-full text-xs font-medium cursor-pointer transition-colors
                             ${d === currentDay ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}
@@ -73,7 +73,7 @@ const MiniCalendar: React.FC = () => {
                     </div>
                 ))}
             </div>
-             <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="mt-4 pt-4 border-t border-slate-100">
                 <p className="text-xs text-slate-400 font-medium mb-2 uppercase">Today's Focus</p>
                 <div className="space-y-2">
                     <div className="flex items-center text-xs">
@@ -94,7 +94,7 @@ const GenderDistributionChart: React.FC<{ students: Student[] }> = ({ students }
     const data = useMemo(() => {
         const males = students.filter(s => s.sex === 'Male').length;
         const females = students.filter(s => s.sex === 'Female').length;
-        
+
         return [
             { name: 'Boys', value: males, color: '#3b82f6' },
             { name: 'Girls', value: females, color: '#ec4899' }
@@ -119,8 +119,8 @@ const GenderDistributionChart: React.FC<{ students: Student[] }> = ({ students }
                             <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                     </Pie>
-                    <Tooltip 
-                        contentStyle={{backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}} 
+                    <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                     />
                     <Legend />
                 </PieChart>
@@ -139,13 +139,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
 
     // KPI Logic
     const activeStudents = useMemo(() => students.filter(s => s.status === StudentStatus.Active), [students]);
-    
+
     const uniqueSubjects = useMemo(() => ['All', ...subjects], [subjects]);
 
     const renderDashboard = () => {
         switch (currentUser?.role) {
             case UserRole.Admin:
-                return <AdminDashboard />;
+                return <AdminDashboard navigate={navigate} />;
             case UserRole.Teacher:
                 return <TeacherDashboard />;
             case UserRole.OfficeWorker:
@@ -155,7 +155,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigate }) => {
             case UserRole.Cleaner:
                 return <CleanerDashboard />;
             default:
-                return <AdminDashboard />;
+                return <AdminDashboard navigate={navigate} />;
         }
     };
 

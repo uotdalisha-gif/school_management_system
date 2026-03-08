@@ -52,7 +52,7 @@ const StaffModal: React.FC<StaffModalProps> = ({ staffData, onClose }) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        
+
         const isTeacherRole = formData.role === StaffRole.Teacher || formData.role === StaffRole.AssistantTeacher;
         if (!formData.name || !formData.contact) {
             setError('Please fill out all required fields.');
@@ -87,9 +87,9 @@ const StaffModal: React.FC<StaffModalProps> = ({ staffData, onClose }) => {
                         <label htmlFor="name" className={labelClasses}>Full Name</label>
                         <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className={inputClasses} required />
                     </div>
-                     <div>
+                    <div>
                         <label htmlFor="role" className={labelClasses}>Role</label>
-                         <select name="role" id="role" value={formData.role} onChange={handleChange} className={inputClasses}>
+                        <select name="role" id="role" value={formData.role} onChange={handleChange} className={inputClasses}>
                             {Object.values(StaffRole).map(role => (
                                 <option key={role} value={role}>{role}</option>
                             ))}
@@ -129,18 +129,19 @@ const StaffPage: React.FC = () => {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importResults, setImportResults] = useState<any | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [deletingStaffId, setDeletingStaffId] = useState<string | null>(null);
 
     // Filter staff logic
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
-            const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                 s.contact.toLowerCase().includes(searchQuery.toLowerCase());
-            
+            const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                s.contact.toLowerCase().includes(searchQuery.toLowerCase());
+
             const isTeaching = s.role === StaffRole.Teacher || s.role === StaffRole.AssistantTeacher;
-            const matchesTab = activeTab === 'all' || 
-                              (activeTab === 'teaching' && isTeaching) || 
-                              (activeTab === 'support' && !isTeaching);
-            
+            const matchesTab = activeTab === 'all' ||
+                (activeTab === 'teaching' && isTeaching) ||
+                (activeTab === 'support' && !isTeaching);
+
             return matchesSearch && matchesTab;
         });
     }, [staff, searchQuery, activeTab]);
@@ -159,7 +160,7 @@ const StaffPage: React.FC = () => {
                 if (currentPage !== targetPage) {
                     setCurrentPage(targetPage);
                 }
-                
+
                 setTimeout(() => {
                     highlightedRowRef.current?.scrollIntoView({
                         behavior: 'smooth',
@@ -187,17 +188,6 @@ const StaffPage: React.FC = () => {
     const handleOpenModal = (staffMember: Staff | null = null) => {
         setEditingStaff(staffMember);
         setIsModalOpen(true);
-    };
-
-    /**
-     * Handles the deletion of a staff member with confirmation.
-     */
-    const handleDelete = (e: React.MouseEvent, staffId: string) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (window.confirm('Are you sure you want to delete this staff member?')) {
-            deleteStaff(staffId);
-        }
     };
 
     /**
@@ -238,11 +228,11 @@ const StaffPage: React.FC = () => {
         if (!file) return;
 
         const { validStaff, errors } = parseStaffCSV(await file.text());
-        
+
         // --- Duplicate Checking ---
         // Identify uniqueness by Name + Contact
         const existingIdentifiers = new Set(staff.map(s => `${s.name.toLowerCase()}|${s.contact.toLowerCase()}`));
-        
+
         const internalNewIdentifiers = new Set();
         const nonDuplicateStaff: Omit<Staff, 'id'>[] = [];
         const duplicateErrors: { row: number, message: string }[] = [];
@@ -250,8 +240,8 @@ const StaffPage: React.FC = () => {
         validStaff.forEach((s, idx) => {
             const id = `${s.name.toLowerCase()}|${s.contact.toLowerCase()}`;
             if (existingIdentifiers.has(id) || internalNewIdentifiers.has(id)) {
-                duplicateErrors.push({ 
-                    row: idx + 2, 
+                duplicateErrors.push({
+                    row: idx + 2,
                     message: `Staff member '${s.name}' with contact '${s.contact}' already exists and was skipped.`
                 });
             } else {
@@ -264,12 +254,12 @@ const StaffPage: React.FC = () => {
             await addStaffBatch(nonDuplicateStaff);
         }
 
-        setImportResults({ 
-            successCount: nonDuplicateStaff.length, 
-            errorCount: errors.length + duplicateErrors.length, 
-            errors: [...errors, ...duplicateErrors] 
+        setImportResults({
+            successCount: nonDuplicateStaff.length,
+            errorCount: errors.length + duplicateErrors.length,
+            errors: [...errors, ...duplicateErrors]
         });
-        
+
         setIsImportModalOpen(true);
         e.target.value = '';
     };
@@ -297,7 +287,7 @@ const StaffPage: React.FC = () => {
         <div className="container mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold text-gray-800">Staff Management</h1>
-                 <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button onClick={handleDownloadReport} className="bg-white text-slate-600 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-semibold flex items-center transition-colors">
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
                         Export
@@ -357,8 +347,8 @@ const StaffPage: React.FC = () => {
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
                     </span>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search by name or contact..."
@@ -366,7 +356,7 @@ const StaffPage: React.FC = () => {
                     />
                 </div>
             </div>
-            
+
             {/* Staff Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -384,8 +374,8 @@ const StaffPage: React.FC = () => {
                             {paginatedStaff.map(s => {
                                 const isHighlighted = s.id === highlightedStaffId;
                                 return (
-                                    <tr 
-                                        key={s.id} 
+                                    <tr
+                                        key={s.id}
                                         ref={isHighlighted ? highlightedRowRef : null}
                                         className={`transition-colors duration-1000 ${isHighlighted ? 'bg-primary-50' : 'hover:bg-gray-50'}`}
                                     >
@@ -412,20 +402,30 @@ const StaffPage: React.FC = () => {
                                             {new Date(s.hireDate).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button 
-                                                onClick={() => setInviteStaff(s)}
-                                                className="text-indigo-600 hover:text-indigo-900 mr-3 font-semibold"
-                                            >
-                                                Invite
-                                            </button>
-                                            <button 
-                                                onClick={() => setPermissionStaff(s)} 
-                                                className="text-amber-600 hover:text-amber-900 mr-3 font-semibold"
-                                            >
-                                                Leave
-                                            </button>
-                                            <button onClick={() => handleOpenModal(s)} className="text-primary-600 hover:text-primary-900 mr-3">Edit</button>
-                                            <button onClick={(e) => handleDelete(e, s.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                                            {deletingStaffId === s.id ? (
+                                                <div className="flex items-center justify-end space-x-2 animate-in fade-in zoom-in duration-200">
+                                                    <span className="text-xs font-bold text-red-600 mr-2 uppercase tracking-wider">Are you sure?</span>
+                                                    <button onClick={() => setDeletingStaffId(null)} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors text-xs font-bold">Cancel</button>
+                                                    <button onClick={() => { deleteStaff(s.id); setDeletingStaffId(null); }} className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs font-bold shadow-sm shadow-red-200">Delete</button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={() => setInviteStaff(s)}
+                                                        className="text-indigo-600 hover:text-indigo-900 mr-3 font-semibold"
+                                                    >
+                                                        Invite
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setPermissionStaff(s)}
+                                                        className="text-amber-600 hover:text-amber-900 mr-3 font-semibold"
+                                                    >
+                                                        Leave
+                                                    </button>
+                                                    <button onClick={() => handleOpenModal(s)} className="text-primary-600 hover:text-primary-900 mr-3 font-semibold">Edit</button>
+                                                    <button onClick={() => setDeletingStaffId(s.id)} className="text-red-600 hover:text-red-900 font-semibold">Delete</button>
+                                                </>
+                                            )}
                                         </td>
                                     </tr>
                                 );

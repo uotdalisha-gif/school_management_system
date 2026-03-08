@@ -167,6 +167,7 @@ const StudentsPage: React.FC = () => {
     const [selectedReportStudent, setSelectedReportStudent] = useState<Student | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+    const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importResults, setImportResults] = useState<any | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,19 +225,18 @@ const StudentsPage: React.FC = () => {
     };
 
     /**
-     * Handles the deletion of a student record with confirmation.
+     * Handles the deletion of a student record without native confirmation.
      */
     const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to permanently delete this student record?')) {
-            try {
-                setIsDeletingId(id);
-                await deleteStudent(id);
-            } catch (e) {
-                console.error(e);
-                alert('Deletion failed. Please try again.');
-            } finally {
-                setIsDeletingId(null);
-            }
+        try {
+            setIsDeletingId(id);
+            await deleteStudent(id);
+        } catch (e) {
+            console.error(e);
+            alert('Deletion failed. Please try again.');
+        } finally {
+            setIsDeletingId(null);
+            setDeletingStudentId(null);
         }
     };
 
@@ -370,15 +370,26 @@ const StudentsPage: React.FC = () => {
                                             </button>
                                             {(isAdmin || isOffice) && (
                                                 <>
-                                                    <button type="button" onClick={() => handleOpenModal(student)} className="text-primary-600 hover:text-primary-800 transition-colors">Edit</button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDelete(student.id)}
-                                                        disabled={loading || !!isDeletingId}
-                                                        className="text-red-500 hover:text-red-700 transition-colors disabled:opacity-50 min-w-[50px] inline-flex items-center justify-end"
-                                                    >
-                                                        {isDeleting ? 'Deleting...' : 'Delete'}
-                                                    </button>
+                                                    {deletingStudentId === student.id ? (
+                                                        <div className="flex items-center justify-end space-x-2 animate-in fade-in zoom-in duration-200">
+                                                            <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Are you sure?</span>
+                                                            <button onClick={() => setDeletingStudentId(null)} disabled={!!isDeletingId} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors text-xs font-bold disabled:opacity-50">Cancel</button>
+                                                            <button onClick={() => handleDelete(student.id)} disabled={!!isDeletingId} className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs font-bold shadow-sm shadow-red-200 disabled:opacity-50 inline-flex items-center justify-center min-w-[60px]">
+                                                                {isDeleting ? '...' : 'Delete'}
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <button type="button" onClick={() => handleOpenModal(student)} className="text-primary-600 hover:text-primary-800 transition-colors">Edit</button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDeletingStudentId(student.id)}
+                                                                className="text-red-500 hover:text-red-700 transition-colors disabled:opacity-50 inline-flex items-center justify-end"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </>
                                             )}
                                         </td>

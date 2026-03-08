@@ -437,7 +437,7 @@ const IncidentModal: React.FC<{
 // Main MessagesPage
 // ─────────────────────────────────────────────
 const MessagesPage: React.FC = () => {
-    const { currentUser, staff } = useData();
+    const { currentUser, staff, addStaffPermission } = useData();
     const isAdmin = currentUser?.role === UserRole.Admin;
     const myDbId = isAdmin ? ADMIN_KEY : (currentUser?.id || '');
     const myName = currentUser?.name || 'Administrator';
@@ -596,6 +596,20 @@ const MessagesPage: React.FC = () => {
     const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
         await updateLeaveStatus(id, status);
         setMessages(prev => prev.map(m => m.id === id ? { ...m, metadata: { ...m.metadata, status } } : m));
+
+        if (status === 'approved') {
+            const msg = messages.find(m => m.id === id);
+            if (msg && msg.metadata) {
+                await addStaffPermission({
+                    staffId: msg.senderId,
+                    type: (msg.metadata.leaveType as any) || 'Personal Leave',
+                    startDate: msg.metadata.startDate || new Date().toISOString().split('T')[0],
+                    endDate: msg.metadata.endDate || new Date().toISOString().split('T')[0],
+                    reason: msg.content.includes('Reason:') ? msg.content.split('Reason:')[1]?.trim() : msg.content,
+                    createdAt: new Date().toISOString()
+                });
+            }
+        }
     };
 
     // ── Delete / unsend

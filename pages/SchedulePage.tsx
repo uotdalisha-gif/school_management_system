@@ -20,6 +20,7 @@ const EventModal: React.FC<{ eventData: SchoolEvent | null; onClose: () => void;
         description: '',
     });
     const [error, setError] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (eventData) {
@@ -53,7 +54,7 @@ const EventModal: React.FC<{ eventData: SchoolEvent | null; onClose: () => void;
     };
 
     const handleDelete = () => {
-        if (eventData && window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+        if (eventData) {
             deleteEvent(eventData.id);
             onClose();
         }
@@ -108,12 +109,22 @@ const EventModal: React.FC<{ eventData: SchoolEvent | null; onClose: () => void;
                     <div className="flex justify-between items-center pt-4">
                         <div>
                             {eventData && (
-                                <button type="button" onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete Event</button>
+                                isDeleting ? (
+                                    <div className="flex items-center space-x-2 animate-in fade-in zoom-in duration-200">
+                                        <span className="text-sm font-bold text-red-600 uppercase tracking-wider">Are you sure?</span>
+                                        <button type="button" onClick={() => setIsDeleting(false)} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors text-sm font-bold">Cancel</button>
+                                        <button type="button" onClick={handleDelete} className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-bold shadow-sm shadow-red-200">Yes, Delete</button>
+                                    </div>
+                                ) : (
+                                    <button type="button" onClick={() => setIsDeleting(true)} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-semibold shadow-sm transition-colors">Delete Event</button>
+                                )
                             )}
                         </div>
                         <div className="space-x-4">
-                            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                            <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">{eventData ? 'Save Changes' : 'Add Event'}</button>
+                            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-semibold">Close</button>
+                            {!isDeleting && (
+                                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-semibold">{eventData ? 'Save Changes' : 'Add Event'}</button>
+                            )}
                         </div>
                     </div>
                 </form>

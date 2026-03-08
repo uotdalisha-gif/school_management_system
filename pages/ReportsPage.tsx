@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { Student, Class, Page, AttendanceStatus } from '../types';
-import { generateStudentProgressCSV, ExportColumnConfig } from '../utils/reportGenerator';
+import { generateStudentProgressCSV, generateClassProgressData, ExportColumnConfig } from '../utils/reportGenerator';
+import * as XLSX from 'xlsx';
 
 // --- Sub-components ---
 
@@ -263,100 +264,139 @@ const MarksEntry: React.FC = () => {
 };
 
 const ExportCenter: React.FC = () => {
-    const { students, grades, attendance } = useData();
-    const [config, setConfig] = useState<ExportColumnConfig[]>([
-        { key: 'id', label: 'Student ID', enabled: true },
-        { key: 'name', label: 'Student Name', enabled: true },
-        { key: 'dob', label: 'Date of Birth', enabled: true },
-        { key: 'age', label: 'Age', enabled: true },
-        { key: 'enrollmentDate', label: 'Joined On', enabled: true },
-        { key: 'phone', label: 'Contact Phone', enabled: true },
-        { key: 'avgScore', label: 'Avg GPA', enabled: true },
-        { key: 'attendanceRate', label: 'Attendance %', enabled: true },
-    ]);
+    const { students, classes, enrollments, grades, attendance, levels } = useData();
+    const [exportMode, setExportMode] = useState<'class' | 'level'>('class');
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
+    const [selectedLevel, setSelectedLevel] = useState<string>('');
+
+    const selectedClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
+
+    const targetStudents = useMemo(() => {
+        if (exportMode === 'class') {
+            if (!selectedClass) return [];
+            const classEnrollments = enrollments.filter(e => e.classId === selectedClass.id);
+            const studentIds = classEnrollments.map(e => e.studentId);
+            return students.filter(s => studentIds.includes(s.id));
+        } else {
+            if (!selectedLevel) return [];
+            // Find all classes in this level
+            const levelClasses = classes.filter(c => c.level === selectedLevel);
+            const classIds = levelClasses.map(c => c.id);
+            const levelEnrollments = enrollments.filter(e => classIds.includes(e.classId));
+            const studentIds = levelEnrollments.map(e => e.studentId);
+            // removing duplicates if any student is enrolled in multiple classes in the same level
+            const uniqueStudentIds = Array.from(new Set(studentIds));
+            return students.filter(s => uniqueStudentIds.includes(s.id));
+        }
+    }, [students, selectedClass, selectedLevel, exportMode, enrollments, classes]);
 
     /**
-     * Toggles the inclusion of a specific column in the export configuration.
-     */
-    const handleToggleColumn = (key: string) => {
-        setConfig(prev => prev.map(c => c.key === key ? { ...c, enabled: !c.enabled } : c));
-    };
-
-    /**
-     * Updates the display label for a specific export column.
-     */
-    const handleLabelChange = (key: string, newLabel: string) => {
-        setConfig(prev => prev.map(c => c.key === key ? { ...c, label: newLabel } : c));
-    };
-
-    /** Selects all available columns for export. */
-    const handleSelectAll = () => setConfig(prev => prev.map(c => ({ ...c, enabled: true })));
-    /** Deselects all columns for export. */
-    const handleClearAll = () => setConfig(prev => prev.map(c => ({ ...c, enabled: false })));
-
-    /**
-     * Generates and downloads the student progress report as a CSV file.
+     * Generates and downloads the student progress report as an Excel file.
      */
     const handleDownloadReport = () => {
-        const csvData = generateStudentProgressCSV(students, grades, attendance, config);
-        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `student_report_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
+        if (targetStudents.length === 0) return;
+
+        const titleName = exportMode === 'class' ? (selectedClass?.name || 'Class') : (`Level_${selectedLevel}`);
+        const exportData = generateClassProgressData(titleName, targetStudents, grades, attendance);
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Student Progress');
+
+        // Let xlsx handle the download natively
+        const fileName = `${exportMode}_export_${titleName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-800">Choose Columns</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">Customize your CSV export format.</p>
-                    </div>
-                    <div className="flex space-x-2">
-                        <button onClick={handleClearAll} className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700">Clear</button>
-                        <button onClick={handleSelectAll} className="px-3 py-1.5 text-xs font-bold text-primary-600 hover:text-primary-800">Select All</button>
-                    </div>
-                </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {config.map((item) => (
-                        <div key={item.key} className={`flex items-start p-3 rounded-xl border transition-all ${item.enabled ? 'bg-primary-50 border-primary-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-                            <input type="checkbox" checked={item.enabled} onChange={() => handleToggleColumn(item.key)} className="mt-1 h-5 w-5 text-primary-600 rounded cursor-pointer" />
-                            <div className="ml-3 flex-1">
-                                <p className={`text-sm font-bold ${item.enabled ? 'text-primary-900' : 'text-slate-700'}`}>{item.label}</p>
-                                {item.enabled && (
-                                    <input type="text" value={item.label} onChange={(e) => handleLabelChange(item.key, e.target.value)} className="w-full mt-2 px-2 py-1 text-xs border border-primary-200 rounded-md bg-white text-slate-900 focus:ring-1 focus:ring-primary-500" />
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 className="text-lg font-bold text-slate-800 mb-4">Export File</h3>
-                    <div className="mb-6">
-                        <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            <span>Enabled Columns</span>
-                            <span>{config.filter(c => c.enabled).length} / {config.length}</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5">
-                            <div className="bg-primary-500 h-1.5 rounded-full" style={{ width: `${(config.filter(c => c.enabled).length / config.length) * 100}%` }}></div>
-                        </div>
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-center">
+                <h2 className="text-xl font-bold text-slate-800 mb-2">Data Export Configuration</h2>
+                <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                    Download a comprehensive roster for a specific Class or an entire Level. The exported file is automatically formatted as an <strong>Excel Document (.xlsx)</strong> containing <strong>Attendance %</strong>, <strong>Contact Phone</strong>, <strong>DOB</strong>, and <strong>Letter Grades (A, B, C, D, F)</strong>.
+                </p>
+
+                <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 mb-6 w-full">
                     <button
-                        onClick={handleDownloadReport}
-                        disabled={config.filter(c => c.enabled).length === 0}
-                        className="w-full bg-gradient-to-r from-primary-600 to-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-primary-200 hover:from-primary-700 hover:to-indigo-700 disabled:opacity-50 transition-all flex flex-col items-center justify-center space-y-1"
+                        onClick={() => setExportMode('class')}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${exportMode === 'class' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <div className="flex items-center space-x-2">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            <span>Download CSV</span>
-                        </div>
-                        <span className="text-[10px] opacity-80 uppercase tracking-widest">Final Student Progress Report</span>
+                        By Class
+                    </button>
+                    <button
+                        onClick={() => setExportMode('level')}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${exportMode === 'level' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        By Level
                     </button>
                 </div>
+
+                {exportMode === 'class' ? (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select a Class</label>
+                        <select
+                            value={selectedClassId}
+                            onChange={(e) => setSelectedClassId(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-primary-500 outline-none transition-all font-medium mb-4"
+                        >
+                            <option value="">Choose a class to export...</option>
+                            {classes.map(c => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} ({c.level}) — {c.schedule}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                ) : (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select a Level (e.g. K1, K2)</label>
+                        <select
+                            value={selectedLevel}
+                            onChange={(e) => setSelectedLevel(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-primary-500 outline-none transition-all font-medium mb-4"
+                        >
+                            <option value="">Choose a level to export...</option>
+                            {levels.map(level => (
+                                <option key={level} value={level}>
+                                    {level}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                <p className="text-xs font-bold text-slate-400">
+                    {(exportMode === 'class' && selectedClass) || (exportMode === 'level' && selectedLevel)
+                        ? `${targetStudents.length} Students Selected for Export`
+                        : 'Total 0 Students Selected'}
+                </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4 text-primary-500">
+                    {(exportMode === 'class' && selectedClass) || (exportMode === 'level' && selectedLevel) ? (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    ) : (
+                        <svg className="w-8 h-8 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    )}
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Export File</h3>
+                <p className="text-sm border border-slate-100 bg-slate-50 py-1.5 px-3 rounded-md text-slate-500 mb-6 min-w-[200px] truncate max-w-full">
+                    {(exportMode === 'class' && selectedClass)
+                        ? `class_export_${selectedClass.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+                        : (exportMode === 'level' && selectedLevel)
+                            ? `level_export_${selectedLevel}_${new Date().toISOString().split('T')[0]}.xlsx`
+                            : 'No target selected'}
+                </p>
+
+                <button
+                    onClick={handleDownloadReport}
+                    disabled={targetStudents.length === 0}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 px-6 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <span>Download Excel Report (.xlsx)</span>
+                </button>
             </div>
         </div>
     );
@@ -614,6 +654,14 @@ const AttendanceReport: React.FC = () => {
 
 const ReportsPage: React.FC = () => {
     const getInitialReportsTab = () => {
+        const stored = sessionStorage.getItem('reports_initial_tab');
+        if (stored) {
+            sessionStorage.removeItem('reports_initial_tab');
+            if (stored === 'export' || stored === 'attendance' || stored === 'marks') {
+                return stored;
+            }
+        }
+
         const parts = window.location.pathname.split('/');
         const sub = parts[2]?.toLowerCase();
         if (sub === 'attendance') return 'attendance';

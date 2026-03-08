@@ -216,6 +216,7 @@ const LevelManager: React.FC = () => {
     const [editingLevel, setEditingLevel] = useState<string | null>(null);
     const [editedValue, setEditedValue] = useState('');
     const [error, setError] = useState('');
+    const [deletingLevel, setDeletingLevel] = useState<string | null>(null);
 
     /**
      * Adds a new school level (grade) to the system.
@@ -269,12 +270,11 @@ const LevelManager: React.FC = () => {
     };
 
     /**
-     * Deletes a school level with confirmation.
+     * Deletes a school level without confirmation here (handled inline).
      */
     const handleDeleteLevel = (level: string) => {
-        if (window.confirm(`Are you sure you want to delete the level "${level}"? Existing students in this level will stay assigned, but you won't be able to select it for new students.`)) {
-            deleteLevel(level);
-        }
+        deleteLevel(level);
+        setDeletingLevel(null);
     };
 
     return (
@@ -325,11 +325,19 @@ const LevelManager: React.FC = () => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button onClick={() => handleDeleteLevel(level)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
+                                    {deletingLevel === level ? (
+                                        <div className="flex items-center space-x-2 animate-in fade-in zoom-in duration-200">
+                                            <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Sure?</span>
+                                            <button onClick={() => setDeletingLevel(null)} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors text-xs font-bold">Cancel</button>
+                                            <button onClick={() => handleDeleteLevel(level)} className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs font-bold shadow-sm shadow-red-200">Delete</button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => setDeletingLevel(level)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -347,6 +355,7 @@ const SessionManager: React.FC = () => {
     const [newTime, setNewTime] = useState('');
     const [newType, setNewType] = useState<'weekday' | 'weekend' | ''>('weekday');
     const [error, setError] = useState('');
+    const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
     /**
      * Adds a new school session (time slot) to the system.
@@ -399,11 +408,19 @@ const SessionManager: React.FC = () => {
                             <span className="font-semibold text-gray-800">{slot.time}</span>
                             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">{slot.type}</span>
                         </div>
-                        <button onClick={() => deleteTimeSlot(slot.id)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </button>
+                        {deletingSessionId === slot.id ? (
+                            <div className="flex items-center space-x-2 animate-in fade-in zoom-in duration-200">
+                                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Sure?</span>
+                                <button onClick={() => setDeletingSessionId(null)} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors text-xs font-bold">Cancel</button>
+                                <button onClick={() => { deleteTimeSlot(slot.id); setDeletingSessionId(null); }} className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs font-bold shadow-sm shadow-red-200">Delete</button>
+                            </div>
+                        ) : (
+                            <button onClick={() => setDeletingSessionId(slot.id)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
                 )) : (
                     <p className="text-center text-gray-500 italic py-4">No sessions defined yet.</p>
@@ -419,6 +436,7 @@ const SubjectManager: React.FC = () => {
     const [editingSubject, setEditingSubject] = useState<string | null>(null);
     const [editedValue, setEditedValue] = useState('');
     const [error, setError] = useState('');
+    const [deletingSubject, setDeletingSubject] = useState<string | null>(null);
 
     /**
      * Adds a new academic subject to the system.
@@ -472,12 +490,11 @@ const SubjectManager: React.FC = () => {
     };
 
     /**
-     * Deletes an academic subject with confirmation.
+     * Deletes an academic subject without confirmation here (handled inline).
      */
     const handleDeleteSubject = (subject: string) => {
-        if (window.confirm(`Are you sure you want to delete the subject "${subject}"? This will unassign it from any teachers.`)) {
-            deleteSubject(subject);
-        }
+        deleteSubject(subject);
+        setDeletingSubject(null);
     };
 
     return (
@@ -528,11 +545,19 @@ const SubjectManager: React.FC = () => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
-                                    <button onClick={() => handleDeleteSubject(subject)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
+                                    {deletingSubject === subject ? (
+                                        <div className="flex items-center space-x-2 animate-in fade-in zoom-in duration-200">
+                                            <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Sure?</span>
+                                            <button onClick={() => setDeletingSubject(null)} className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors text-xs font-bold">Cancel</button>
+                                            <button onClick={() => handleDeleteSubject(subject)} className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-xs font-bold shadow-sm shadow-red-200">Delete</button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => setDeletingSubject(subject)} className="text-gray-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -943,10 +968,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onLogout, userRole }) => {
     const getInitialSettingsTab = () => {
         const parts = window.location.pathname.split('/');
         const sub = parts[2]?.toLowerCase();
-        const valid = ['account', 'levels', 'sessions', 'subjects', 'data', 'sync', 'scripts', 'offline'];
-        return (valid.includes(sub) ? sub : 'account') as 'account' | 'levels' | 'sessions' | 'subjects' | 'data' | 'sync' | 'offline' | 'scripts';
+        const valid = ['account', 'levels', 'sessions', 'subjects', 'data', 'sync', 'offline'];
+        return (valid.includes(sub) ? sub : 'account') as 'account' | 'levels' | 'sessions' | 'subjects' | 'data' | 'sync' | 'offline';
     };
-    const [activeTab, setActiveTab] = useState<'account' | 'levels' | 'sessions' | 'subjects' | 'data' | 'sync' | 'offline' | 'scripts'>(getInitialSettingsTab);
+    const [activeTab, setActiveTab] = useState<'account' | 'levels' | 'sessions' | 'subjects' | 'data' | 'sync' | 'offline'>(getInitialSettingsTab);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -990,7 +1015,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onLogout, userRole }) => {
         { id: 'subjects', label: 'Subjects', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>, adminOnly: true },
         { id: 'data', label: 'Database', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3zM4 7l8 4 8-4" /></svg>, adminOnly: true },
         { id: 'sync', label: 'Cloud Sync', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>, adminOnly: true },
-        { id: 'scripts', label: 'New Script', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>, adminOnly: true },
         { id: 'offline', label: 'Offline Help', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, adminOnly: false },
     ] as const;
 
@@ -1018,8 +1042,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onLogout, userRole }) => {
                                 document.title = `Settings / ${tab.label} | SchoolAdmin`;
                             }}
                             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === tab.id
-                                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 translate-x-1'
-                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent border-b-slate-100'
+                                ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 translate-x-1'
+                                : 'bg-white text-gray-600 hover:bg-gray-50 border border-transparent border-b-slate-100'
                                 }`}
                         >
                             {tab.icon}
@@ -1188,7 +1212,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onLogout, userRole }) => {
                             </div>
                         </div>
                     )}
-                    {activeTab === 'scripts' && <div className="animate-in fade-in slide-in-from-right-2 duration-300"><DatabaseScriptManager /></div>}
                     {activeTab === 'offline' && <div className="animate-in fade-in slide-in-from-right-2 duration-300"><OfflineGuide /></div>}
                 </div>
             </div>

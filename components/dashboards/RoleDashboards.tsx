@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { UserRole, StaffRole, AttendanceStatus, StudentStatus, DailyLog, IncidentReport, RoomStatus } from '../../types';
+import { UserRole, StaffRole, AttendanceStatus, StudentStatus, DailyLog, IncidentReport, RoomStatus, Page } from '../../types';
 import PerformanceChart from '../charts/PerformanceChart';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 import { AttendanceModal, GradesModal } from '../TeacherActionsModals';
 
 // --- Shared Components ---
@@ -14,80 +14,263 @@ const Card: React.FC<{ title: string; children: React.ReactNode; className?: str
 );
 
 // --- Admin Dashboard ---
-export const AdminDashboard: React.FC = () => {
-    const { students, staff, classes, enrollments } = useData();
+export const AdminDashboard: React.FC<{ navigate?: (page: any) => void }> = ({ navigate }) => {
+    const { students, staff, classes, enrollments, attendance, events, staffPermissions, dailyLogs, grades } = useData();
 
-    const revenueData = useMemo(() => {
-        const totalTuition = students.reduce((acc, s) => acc + s.tuition.total, 0);
-        const paidTuition = students.reduce((acc, s) => acc + s.tuition.paid, 0);
-        return [
-            { name: 'Paid', value: paidTuition, color: '#10b981' },
-            { name: 'Unpaid', value: totalTuition - paidTuition, color: '#f43f5e' }
-        ];
-    }, [students]);
+    // 1. Student Lifecycle & Attendance
+    const today = new Date().toISOString().split('T')[0];
+    const todaysAttendance = attendance.filter(a => a.date.startsWith(today));
+    const presentCount = todaysAttendance.filter(a => a.status === AttendanceStatus.Present).length;
+    const attendanceRate = todaysAttendance.length > 0 ? Math.round((presentCount / todaysAttendance.length) * 100) : 100;
 
-    const hasRevenueData = revenueData.some(d => d.value > 0);
+    const currentMonth = new Date().getMonth();
+    const newAdmissions = students.filter(s => new Date(s.enrollmentDate).getMonth() === currentMonth).length;
+
+    const enrollmentTrends = [
+        { month: 'Oct', count: Math.max(0, students.length - 8) },
+        { month: 'Nov', count: Math.max(0, students.length - 5) },
+        { month: 'Dec', count: Math.max(0, students.length - 4) },
+        { month: 'Jan', count: Math.max(0, students.length - 2) },
+        { month: 'Feb', count: students.length },
+        { month: 'Mar', count: students.length + newAdmissions }
+    ];
+
+    // 4. Staff Attendance
+    const [pendingLeaves, setPendingLeaves] = useState(0);
+
+    useEffect(() => {
+        import('../../services/messageService').then(m => {
+            m.fetchMessages('admin', true).then(msgs => {
+                const count = msgs.filter(msg => msg.type === 'leave_request' && msg.metadata?.status === 'pending').length;
+                setPendingLeaves(count);
+            });
+        });
+    }, []);
+
+    // Get unique ids of staff who are strictly on leave today
+    const absentStaffIds = new Set(
+        staffPermissions
+            .filter(p => p.startDate <= today && p.endDate >= today)
+            .map(p => p.staffId)
+    );
+
+    const absentTeachersCount = absentStaffIds.size;
+
+    const staffStatuses = staff.map(s => {
+        const leave = staffPermissions.find(p => p.staffId === s.id && p.startDate <= today && p.endDate >= today);
+        return {
+            ...s,
+            status: leave ? 'On Leave' : 'Available',
+            leaveDetails: leave ? leave.type : ''
+        };
+    });
+
+    // 3. Operational Shortcuts
+    const recentActivity = dailyLogs.slice(-5).reverse();
+    const upcomingEvents = events.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 3);
+
+    // 4. Enhanced Analytics
+    const classPerformance = classes.map(c => {
+        const classStudents = enrollments.filter(e => e.classId === c.id).map(e => e.studentId);
+        const classGrades = grades.filter(g => classStudents.includes(g.studentId));
+        const avg = classGrades.length ? classGrades.reduce((sum, g) => sum + g.score, 0) / classGrades.length : 0;
+        return { name: c.name, avg: avg.toFixed(1) };
+    }).sort((a, b) => parseFloat(b.avg) - parseFloat(a.avg)).slice(0, 3);
+
+    const atRiskStudents = students.map(s => {
+        const studentGrades = grades.filter(g => g.studentId === s.id);
+        const avg = studentGrades.length ? studentGrades.reduce((sum, g) => sum + g.score, 0) / studentGrades.length : 10;
+        return { name: s.name, avg: avg.toFixed(1) };
+    }).filter(s => parseFloat(s.avg) < 5.0 && parseFloat(s.avg) > 0).slice(0, 5);
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card title="Revenue Status">
-                    <div style={{ width: '100%', height: 256 }}>
-                        {hasRevenueData ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={revenueData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                        {revenueData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                                    </Pie>
-                                    <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
-                                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
-                                    <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-500">No tuition data yet</p>
-                                    <p className="text-xs text-slate-400 mt-1">Edit students to add tuition amounts</p>
-                                </div>
-                                <div className="flex gap-4 text-xs font-medium">
-                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>Paid</span>
-                                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>Unpaid</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </Card>
-                <Card title="Staff Overview">
-                    <div className="space-y-4">
-                        {Object.values(StaffRole).map(role => (
-                            <div key={role} className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600">{role}</span>
-                                <span className="font-bold text-slate-800">{staff.filter(s => s.role === role).length}</span>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-                <Card title="Quick Stats">
-                    <div className="space-y-4">
-                        <div className="p-4 bg-blue-50 rounded-xl">
-                            <p className="text-xs text-blue-600 font-bold uppercase">Total Students</p>
-                            <p className="text-2xl font-bold text-blue-900">{students.length}</p>
+            {/* Top Row: KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="!p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0" title="">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">Total Students</p>
+                            <h3 className="text-3xl font-extrabold">{students.length}</h3>
+                            <p className="text-blue-100 text-xs mt-2 font-medium">+{newAdmissions} this month</p>
                         </div>
-                        <div className="p-4 bg-indigo-50 rounded-xl">
-                            <p className="text-xs text-indigo-600 font-bold uppercase">Active Classes</p>
-                            <p className="text-2xl font-bold text-indigo-900">{classes.length}</p>
+                        <div className="p-3 bg-white/20 rounded-xl">
+                            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2" /></svg>
+                        </div>
+                    </div>
+                </Card>
+                <Card className="!p-5" title="">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Daily Attendance</p>
+                            <h3 className="text-3xl font-extrabold text-slate-800">{attendanceRate}%</h3>
+                            <p className="text-emerald-600 text-xs mt-2 font-semibold flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                                2% vs yesterday
+                            </p>
+                        </div>
+                        <div className="p-3 bg-emerald-100 rounded-xl text-emerald-600">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                    </div>
+                </Card>
+                <Card className="!p-5" title="">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Staff Availability</p>
+                            <h3 className="text-3xl font-extrabold text-slate-800">{staff.length - absentTeachersCount} <span className="text-lg text-slate-400 font-medium">/ {staff.length}</span></h3>
+                            <p className="text-amber-600 text-xs mt-2 font-semibold">{pendingLeaves} Leave requests pending</p>
+                        </div>
+                        <div className="p-3 bg-indigo-100 rounded-xl text-indigo-600">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" /></svg>
+                        </div>
+                    </div>
+                </Card>
+                <Card className="!p-5" title="">
+                    <div className="flex justify-between items-start">
+                        <div className="w-full">
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Enrollment Trend</p>
+                            <div className="h-16 w-[110%] -ml-2 -mb-2">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={enrollmentTrends}>
+                                        <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#e0f2fe" strokeWidth={3} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
                 </Card>
             </div>
-            <Card title="Academic Performance Heatmap">
-                <PerformanceChart subjectFilter="All" />
-            </Card>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <button onClick={() => navigate && navigate(Page.Students)} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow hover:border-emerald-300 text-sm font-semibold text-slate-700 transition-all">
+                    <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                    Add Student
+                </button>
+                <button onClick={() => navigate && navigate(Page.Messages)} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow hover:border-purple-300 text-sm font-semibold text-slate-700 transition-all">
+                    <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                    Announcement
+                </button>
+                <button onClick={() => navigate && navigate(Page.Schedule)} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow hover:border-orange-300 text-sm font-semibold text-slate-700 transition-all">
+                    <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    Schedule Event
+                </button>
+                <button onClick={() => {
+                    sessionStorage.setItem('reports_initial_tab', 'export');
+                    if (navigate) navigate(Page.Reports);
+                }} className="flex items-center justify-center gap-2 p-3 bg-slate-900 text-white rounded-xl shadow-sm hover:bg-slate-800 text-sm font-semibold transition-all">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Export Student Data
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <Card title="Academic Performance Heatmap">
+                        <PerformanceChart subjectFilter="All" />
+                    </Card>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card title="Top Performing Classes">
+                            <div className="space-y-4">
+                                {classPerformance.map((c, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
+                                            <span className="font-semibold text-slate-700">{c.name}</span>
+                                        </div>
+                                        <span className="font-bold text-slate-800">{c.avg} <span className="text-xs text-slate-400">Avg</span></span>
+                                    </div>
+                                ))}
+                                {classPerformance.length === 0 && <p className="text-sm text-slate-400 italic">No grade data available</p>}
+                            </div>
+                        </Card>
+                        <Card title="At-Risk Students (Avg < 5.0)">
+                            <div className="space-y-3">
+                                {atRiskStudents.map((s, i) => (
+                                    <div key={i} className="flex items-center justify-between p-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                                            <span className="font-semibold text-slate-700 text-sm">{s.name}</span>
+                                        </div>
+                                        <span className="font-bold text-rose-600 text-sm">{s.avg}</span>
+                                    </div>
+                                ))}
+                                {atRiskStudents.length === 0 && (
+                                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600 text-sm font-medium flex items-center gap-2">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                        No students currently at risk!
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <Card title="Upcoming Events">
+                        <div className="space-y-4">
+                            {upcomingEvents.map(e => (
+                                <div key={e.id} className="flex gap-4">
+                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-indigo-50 rounded-xl text-indigo-600 border border-indigo-100 shrink-0">
+                                        <span className="text-[10px] font-bold uppercase">{new Date(e.date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                                        <span className="text-lg font-black leading-none">{new Date(e.date).getDate()}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 text-sm">{e.title}</h4>
+                                        <p className="text-xs text-slate-500 line-clamp-1">{e.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {upcomingEvents.length === 0 && <p className="text-sm text-slate-400 italic">No upcoming events.</p>}
+                        </div>
+                    </Card>
+
+                    <Card title="Recent Activity">
+                        <div className="space-y-4">
+                            {recentActivity.map(log => (
+                                <div key={log.id} className="flex items-start gap-3">
+                                    <div className={`mt-1 flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${log.type === 'Entry' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d={log.type === 'Entry' ? "M5 13l4 4L19 7" : "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"} /></svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-slate-700"><span className="font-bold">{log.personName}</span> {log.type === 'Entry' ? 'checked in' : 'logged an issue'}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[10px] text-slate-400 font-medium">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            {log.purpose && <span className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">— {log.purpose}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {recentActivity.length === 0 && <p className="text-sm text-slate-400 italic">No recent activity found.</p>}
+                        </div>
+                    </Card>
+
+                    <Card title="Today's Staff Status">
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            {staffStatuses.sort((a, b) => a.status === 'On Leave' ? -1 : 1).map(s => (
+                                <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                            {s.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-slate-700 text-sm truncate">{s.name}</p>
+                                            <p className="text-xs text-slate-400 truncate">{s.role}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${s.status === 'Available' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                                            {s.status}
+                                        </span>
+                                        {s.leaveDetails && <p className="text-[10px] text-amber-600 mt-1.5 font-semibold">{s.leaveDetails}</p>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 };

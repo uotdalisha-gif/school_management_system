@@ -3,7 +3,7 @@
  * ULTRA-ROBUST Service Worker v25.
  * Designed to survive first-load offline tests.
  */
-const CACHE_NAME = 'school-admin-v29';
+const CACHE_NAME = 'school-admin-v30';
 
 // ONLY cache local things we 100% control to avoid 404/CORS deaths in 'install'
 const CORE_ASSETS = [
@@ -37,8 +37,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Never cache Supabase
+  // 1. Never cache Supabase or localhost development
   if (url.hostname.includes('supabase.co')) return;
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
 
   // 2. Navigation: Network-First with Cache-Fallback
   if (event.request.mode === 'navigate') {
