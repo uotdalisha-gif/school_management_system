@@ -420,7 +420,7 @@ const StaffPage: React.FC = () => {
                                                         onClick={() => setPermissionStaff(s)}
                                                         className="text-amber-600 hover:text-amber-900 mr-3 font-semibold"
                                                     >
-                                                        Leave
+                                                        Permission
                                                     </button>
                                                     <button onClick={() => handleOpenModal(s)} className="text-primary-600 hover:text-primary-900 mr-3 font-semibold">Edit</button>
                                                     <button onClick={() => setDeletingStaffId(s.id)} className="text-red-600 hover:text-red-900 font-semibold">Delete</button>
